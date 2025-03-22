@@ -26,53 +26,55 @@ namespace Inverses
             int users, movies;
             Dictionary<int, int[]> userPreferences = new Dictionary<int, int[]>();
 
-            using (StreamReader sr = new StreamReader(inputFileName))
+            using (StreamReader streamReader = new StreamReader(inputFileName))
             {
-                string firstLine = sr.ReadLine();
-                string[] tokens = firstLine.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] tokens = streamReader.ReadLine().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
                 users = int.Parse(tokens[0]);
                 movies = int.Parse(tokens[1]);
 
                 for (int i = 0; i < users; i++)
                 {
-                    string line = sr.ReadLine();
+                    string line = streamReader.ReadLine();
                     if (line == null)
                         break;
 
-                    string[] parts = line.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                    int userId = int.Parse(parts[0]);
-                    int[] prefs = new int[movies];
+                    string[] parts = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
+                    int[] preferences = new int[movies];
+
                     for (int j = 0; j < movies; j++)
                     {
-                        prefs[j] = int.Parse(parts[j + 1]);
+                        preferences[j] = int.Parse(parts[j + 1]);
                     }
-                    userPreferences[userId] = prefs;
+
+                    int userIndex = int.Parse(parts[0]);
+
+                    userPreferences[userIndex] = preferences;
                 }
             }
 
             Console.Write("Enter user number: ");
-            int x;
-            while (!int.TryParse(Console.ReadLine(), out x) || !userPreferences.ContainsKey(x))
+            int referenceUserIndex;
+            while (!int.TryParse(Console.ReadLine(), out referenceUserIndex) || !userPreferences.ContainsKey(referenceUserIndex))
             {
                 Console.WriteLine("User with index not found:");
             }
 
-            int[] refList = userPreferences[x];
+            int[] referenceList = userPreferences[referenceUserIndex];
 
-            Dictionary<int, int> filmRank = new Dictionary<int, int>();
+            Dictionary<int, int> filmRank = [];
             for (int i = 0; i < movies; i++)
             {
-                filmRank[refList[i]] = i;
+                filmRank[referenceList[i]] = i;
             }
 
-            List<Tuple<int, long>> similarityList = new List<Tuple<int, long>>();
-            foreach (var kvp in userPreferences)
+            List<Tuple<int, long>> similarityList = [];
+            foreach (var pair in userPreferences)
             {
-                int userId = kvp.Key;
-                if (userId == x)
+                int userIndex = pair.Key;
+                if (userIndex == referenceUserIndex)
                     continue;
 
-                int[] currentList = kvp.Value;
+                int[] currentList = pair.Value;
                 int[] rankArray = new int[movies];
                 for (int i = 0; i < movies; i++)
                 {
@@ -80,19 +82,19 @@ namespace Inverses
                 }
 
                 long inversions = CountInversions(rankArray);
-                similarityList.Add(new Tuple<int, long>(userId, inversions));
+                similarityList.Add(new Tuple<int, long>(userIndex, inversions));
             }
 
             similarityList.Sort((a, b) => a.Item2.CompareTo(b.Item2));
 
             string outputFileName = "output.txt";
 
-            using (StreamWriter sw = new StreamWriter(outputFileName))
+            using (StreamWriter streamWriter = new StreamWriter(outputFileName))
             {
-                sw.WriteLine(x);
+                streamWriter.WriteLine(referenceUserIndex);
                 foreach (var pair in similarityList)
                 {
-                    sw.WriteLine("{0} {1}", pair.Item1, pair.Item2);
+                    streamWriter.WriteLine("{0} {1}", pair.Item1, pair.Item2);
                 }
             }
 
@@ -101,28 +103,31 @@ namespace Inverses
 
         static long CountInversions(int[] arr)
         {
-            int[] aux = new int[arr.Length];
-            return MergeSortAndCount(arr, aux, 0, arr.Length - 1);
+            int[] tempArr = new int[arr.Length];
+
+            return MergeSortAndCount(arr, tempArr, 0, arr.Length - 1);
         }
 
-        static long MergeSortAndCount(int[] arr, int[] aux, int left, int right)
+        static long MergeSortAndCount(int[] arr, int[] tempArr, int left, int right)
         {
             if (left >= right)
                 return 0;
 
             int mid = (left + right) / 2;
             long count = 0;
-            count += MergeSortAndCount(arr, aux, left, mid);
-            count += MergeSortAndCount(arr, aux, mid + 1, right);
-            count += Merge(arr, aux, left, mid, right);
+
+            count += MergeSortAndCount(arr, tempArr, left, mid);
+            count += MergeSortAndCount(arr, tempArr, mid + 1, right);
+            count += Merge(arr, tempArr, left, mid, right);
+
             return count;
         }
 
-        static long Merge(int[] arr, int[] aux, int left, int mid, int right)
+        static long Merge(int[] arr, int[] tempArr, int left, int mid, int right)
         {
             for (int k = left; k <= right; k++)
             {
-                aux[k] = arr[k];
+                tempArr[k] = arr[k];
             }
 
             long inversions = 0;
@@ -132,19 +137,19 @@ namespace Inverses
 
             while (i <= mid && j <= right)
             {
-                if (aux[i] <= aux[j])
+                if (tempArr[i] <= tempArr[j])
                 {
-                    arr[kIndex++] = aux[i++];
+                    arr[kIndex++] = tempArr[i++];
                 }
                 else
                 {
-                    arr[kIndex++] = aux[j++];
+                    arr[kIndex++] = tempArr[j++];
                     inversions += (mid - i + 1);
                 }
             }
             while (i <= mid)
             {
-                arr[kIndex++] = aux[i++];
+                arr[kIndex++] = tempArr[i++];
             }
 
             return inversions;
